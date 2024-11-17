@@ -8,7 +8,7 @@ def main():
     
     # Load the fine-tune model
     # ms_tacotron2 = MSTacotron2.from_hparams(source="models/fine_tuned_ms_tacotron2", savedir="pretrained_models")
-    # recording_path = "audio_records/recording0.wav"
+    # recording_path = "audio_records/reference.wav"
     # output_text = ""
     
     # output_text_path = "data/output_text.txt"
@@ -18,6 +18,7 @@ def main():
     # mel_outputs, mel_lengths, alignments = ms_tacotron2.clone_voice(output_text, recording_path)
     
     #### Vocoder part
+    # save the synthezied audio to audio_recordings/synthesized.wav
     
     
 

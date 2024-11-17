@@ -15,7 +15,6 @@ class Recorder:
         Initialize the Recorder with paths, encoder, sample rate, and duration.
 
         Args:
-            encoder: The encoder instance to generate embeddings.
             sample_rate (int): Sample rate for audio recording.
             duration (int): Duration in seconds for each recording.
         """
@@ -33,13 +32,13 @@ class Recorder:
         """Record audio for the set duration and sample rate."""
         print("\nRecording...")
         audio = sd.rec(int(self.duration * self.sample_rate), samplerate=self.sample_rate, channels=1, dtype='float32')
-        sd.wait()  # Wait until recording is finished
-
+        sd.wait()  
+        
         # Convert to torch tensor
         audio_tensor = torch.tensor(audio).squeeze()
 
         # Save the audio file
-        write(os.path.join(AUDIO_RECORDS_DIR, "recording0.wav"), self.sample_rate, audio_tensor.numpy())
+        write(os.path.join(AUDIO_RECORDS_DIR, "reference.wav"), self.sample_rate, audio_tensor.numpy())
 
         return audio_tensor
 
