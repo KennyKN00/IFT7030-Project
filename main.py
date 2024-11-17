@@ -1,32 +1,23 @@
 import torch
-from pathlib import Path
-from encoder import audio
-from encoder import inference 
 from preprocessing.recorder import Recorder
+from speechbrain.inference.TTS import MSTacotron2
 
 def main():
-    # Path to the pre-trained encoder weights
-    encoder_model_path = Path("models/encoder.pt")
-
-    # Load the model using load_model, which sets _model globally
-    _model = inference.load_model(encoder_model_path, device="cuda" if torch.cuda.is_available() else "cpu")
-
-    if _model is None:
-            raise ValueError("The encoder model was not loaded correctly.")
-        
-    # Pass _model and audio_module to Recorder
-    recorder = Recorder(encoder=_model, inference=inference, audio=audio)
-
-    # Run the recording and processing workflow
+    recorder = Recorder()
     recorder.run()
     
-    # data = torch.load("mel_spectrograms/001.pt")
-
-    # # Check keys and structure
-    # print("Keys in .pt file:", data.keys())
-    # for key, value in data.items():
-    #     print(f"{key}: {type(value)}, shape: {value.shape if hasattr(value, 'shape') else 'N/A'}")
-    #     print(value)
+    # Load the fine-tune model
+    # ms_tacotron2 = MSTacotron2.from_hparams(source="models/fine_tuned_ms_tacotron2", savedir="pretrained_models")
+    # recording_path = "audio_records/recording0.wav"
+    # output_text = ""
+    
+    # output_text_path = "data/output_text.txt"
+    # with open(output_text_path, "r", encoding="utf-8") as file:
+    #     output_text = file.read()
+        
+    # mel_outputs, mel_lengths, alignments = ms_tacotron2.clone_voice(output_text, recording_path)
+    
+    #### Vocoder part
     
     
 

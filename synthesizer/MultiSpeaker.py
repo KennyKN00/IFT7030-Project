@@ -69,20 +69,4 @@ def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
             print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
 
 fine_tune_model(ms_tacotron2, dataloader, num_epochs=3, learning_rate=1e-4)
-# torch.save(ms_tacotron2.state_dict(), "models/fine_tuned_ms_tacotron2.pth")
-
-
-
-# # Required input
-# REFERENCE_SPEECH = "audio_records/recording0.wav"
-# INPUT_TEXT = "I like artificial intelligence because it is amazing"
-
-# # Running the Zero-Shot Multi-Speaker Tacotron2 model to generate mel-spectrogram
-# mel_outputs, mel_lengths, alignments = ms_tacotron2.clone_voice(INPUT_TEXT, REFERENCE_SPEECH)
-
-# # Running Vocoder (spectrogram-to-waveform)
-# waveforms = hifi_gan.decode_batch(mel_outputs)
-
-# # Save the waverform
-# torchaudio.save("synthesized_sample.wav", waveforms.squeeze(1).cpu(), 22050)
-
+torch.save(ms_tacotron2.state_dict(), "models/fine_tuned_ms_tacotron2.pth")
