@@ -67,6 +67,11 @@ def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
             optimizer.step()
 
             print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
+        
+        if epoch in [3, 5, 10]:
+            save_path = f"models/fine_tuned_ms_tacotron2_epoch_{epoch}.pth"
+            torch.save(ms_tacotron2.state_dict(), save_path)
+            print(f"Model saved at {save_path}")
+        
 
-fine_tune_model(ms_tacotron2, dataloader, num_epochs=3, learning_rate=1e-4)
-torch.save(ms_tacotron2.state_dict(), "models/fine_tuned_ms_tacotron2.pth")
+fine_tune_model(ms_tacotron2, dataloader, num_epochs=10, learning_rate=1e-4)
