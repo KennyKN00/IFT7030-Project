@@ -83,7 +83,7 @@ def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
             optimizer.step()
 
             train_loss += loss.item()
-            num_batches +1
+            num_batches += 1
             print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
             
         train_loss /= num_batches
