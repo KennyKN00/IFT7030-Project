@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import torchaudio
 import torch
 import torch.nn.functional as F
@@ -15,6 +16,17 @@ for name, param in ms_tacotron2.mods["model"].named_parameters():
     elif "decoder" in name or "attention" in name:
         param.requires_grad = True  # Keep attention and decoder layers trainable
 
+def get_loss_curves(epochs, train_losses):
+    x = range(1, epochs+1)
+    y = train_losses
+    
+    plt.plot(epochs, train_losses, label='Training Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Loss Curves')
+    plt.legend()
+    plt.show()
+    
     
 def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
     
@@ -22,8 +34,12 @@ def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
 
     model.train()  # Set the model to training mode
+    train_losses = []
 
     for epoch in range(num_epochs):
+        train_loss = 0.0
+        num_batches = 0
+        
         for batch in dataloader:
             # Unpack the batch
             mel_targets = batch["mel"]  # Target mel-spectrograms
@@ -66,12 +82,19 @@ def fine_tune_model(model, dataloader, num_epochs=5, learning_rate=1e-4):
             loss.backward()
             optimizer.step()
 
+            train_loss += loss.item()
+            num_batches +1
             print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
+            
+        train_loss /= num_batches
+        train_losses.append(train_loss)
         
         if epoch in [2, 4, 9]:
             save_path = f"models/fine_tuned_ms_tacotron2_epoch_{epoch}.pth"
             torch.save(ms_tacotron2.state_dict(), save_path)
             print(f"Model saved at {save_path}")
+    
+    get_loss_curves(num_epochs, train_losses)
         
 
 fine_tune_model(ms_tacotron2, dataloader, num_epochs=10, learning_rate=1e-4)
