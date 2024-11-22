@@ -65,8 +65,7 @@ class Recorder:
             self.countdown(3)
 
             # Record audio after countdown
-            audio = self.record_audio()
-            self.preprocess_and_save(audio, filename, sentence)
+            self.record_audio()
 
             # Ask the user if they want to continue
             user_input = input("Do you want to record the next sentence? (Y/N): ").strip().upper()
