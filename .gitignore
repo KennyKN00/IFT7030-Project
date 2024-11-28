@@ -161,5 +161,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-VTCK_data/
+VCTK_data/
 models/fine_tuned_ms_tacotron2_epoch_5.pth
