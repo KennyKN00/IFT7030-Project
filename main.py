@@ -56,8 +56,6 @@ def main():
     
     # preprocessing.prepare_data(encoder.inference)
     
-    
-    
     audio_path = "audio_records/reference.wav"
     pretrained_model_path = Path("pretrained_models/synthesizer.pt")
     fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
