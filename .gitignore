@@ -163,3 +163,4 @@ cython_debug/
 
 VCTK_data/
 models/fine_tuned_ms_tacotron2_epoch_5.pth
+pretrained_models/
