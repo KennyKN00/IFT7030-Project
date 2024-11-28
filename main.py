@@ -24,7 +24,7 @@ def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=512, title="Mel-S
     plt.show()
 
 def clone_voice(audio_path, trained_path):
-    encoder.load_model(Path("pretrained_models/encoder.pt"))
+    encoder.load_model(Path("models/encoder.pt"))
     embedding = encoder.embed_utterance(encoder.preprocess_wav(audio_path))
     
     # Load the model
@@ -57,9 +57,10 @@ def main():
     # preprocessing.prepare_data(encoder.inference)
     
     audio_path = "audio_records/reference.wav"
-    pretrained_model_path = Path("pretrained_models/synthesizer.pt")
+    pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
     
+    # Inital mel
     compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
