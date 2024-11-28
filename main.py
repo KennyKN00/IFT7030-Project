@@ -68,12 +68,6 @@ def main():
     # mel = clone_voice(audio_path, pretrained_model_path)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
     
-    
-    
-    
-    
-
-    
 
 if __name__ == '__main__':
     main()
