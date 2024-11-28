@@ -110,7 +110,7 @@ def processing(encoder, metadata_path):
     print(f"Updated metadata saved to {metadata_path}")
     print(f"SUCCES : Embeddings complete. Speakers embeddings saved to {embedding_folder}.")
     
-def audio_to_mel(encoder, metadata_path):
+def audio_to_mel(metadata_path):
     metadata = pd.read_csv(metadata_path)
     
     mel_dir = "data/mel_spectrograms"
@@ -154,8 +154,8 @@ def compute_mel_spectrogram(audio_path, sr=22050, n_fft=1024, hop_length=256, n_
     
     return mel_spectrogram_db
         
-def prepare_data(encoder_inference, encoder_audio):
+def prepare_data(encoder_inference):
     preparing()
     processing(encoder_inference, "data/metadata.csv")
-    audio_to_mel(encoder_audio, "data/metadata.csv")
+    audio_to_mel("data/metadata.csv")
     
