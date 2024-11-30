@@ -81,11 +81,11 @@ def preparing():
 
 def processing(encoder, metadata_path):
     print("INFO : Starting the data's embeddings")
-    encoder.load_model(Path("pretrained_models/encoder.pt"))
+    encoder.load_model(Path("models/encoder.pt"))
     metadata = pd.read_csv(metadata_path)
     
     # Create a directory for saving embeddings
-    embedding_folder = "data/speaker_embeddings"
+    embedding_folder = "data/val/speaker_embeddings"
     os.makedirs(embedding_folder, exist_ok=True)
 
     # Iterate through each row in metadata
@@ -113,7 +113,7 @@ def processing(encoder, metadata_path):
 def audio_to_mel(metadata_path):
     metadata = pd.read_csv(metadata_path)
     
-    mel_dir = "data/mel_spectrograms"
+    mel_dir = "data/val/mel_spectrograms"
     os.makedirs(mel_dir, exist_ok=True)
     
     for index, row in metadata.iterrows():
@@ -154,8 +154,8 @@ def compute_mel_spectrogram(audio_path, sr=22050, n_fft=1024, hop_length=256, n_
     
     return mel_spectrogram_db
         
-def prepare_data(encoder_inference):
-    preparing()
-    processing(encoder_inference, "data/metadata.csv")
-    audio_to_mel("data/metadata.csv")
+def prepare_data(encoder_inference, metadata_path):
+    # preparing()
+    processing(encoder_inference, metadata_path)
+    audio_to_mel(metadata_path)
     
