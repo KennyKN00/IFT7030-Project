@@ -11,6 +11,7 @@ import librosa
 import numpy as np
 import preprocessing.data_preprocessing as preprocessing
 from synthesizer.inference import Synthesizer
+import fine_tuning as train
 
 def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=512, title="Mel-Spectrogram", path=""):
     plt.figure(figsize=(10, 4))
@@ -54,18 +55,20 @@ def main():
     # recorder = Recorder()
     # recorder.run()
     
-    # preprocessing.prepare_data(encoder.inference)
+    # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
     
     audio_path = "audio_records/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
     
     # Inital mel
-    compute_initial_mel(audio_path, pretrained_model_path)
+    # compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
     # mel = clone_voice(audio_path, pretrained_model_path)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
+
+    train.run()
     
 
 if __name__ == '__main__':
