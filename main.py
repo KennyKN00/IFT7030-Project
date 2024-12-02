@@ -57,7 +57,7 @@ def main():
     
     # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
     
-    audio_path = "audio_records/reference.wav"
+    audio_path = "audio_records/reference4.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
     
@@ -65,10 +65,15 @@ def main():
     # compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
-    # mel = clone_voice(audio_path, pretrained_model_path)
+    mel = clone_voice(audio_path, pretrained_model_path)
+    print(mel.shape)
+    path = "MELTEST/mel8.npy"
+    vocoder.writeMEL(mel, path)
+    mel_read = vocoder.readMEL(path)
+    print(mel_read.shape)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
+    # train.run()
 
-    train.run()
     
 
 if __name__ == '__main__':
