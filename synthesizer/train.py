@@ -1,7 +1,10 @@
 from datetime import datetime
+import time
 from functools import partial
 from pathlib import Path
+import sys
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import optim
@@ -14,7 +17,6 @@ from synthesizer.utils import ValueWindow, data_parallel_workaround
 from synthesizer.utils.plot import plot_spectrogram
 from synthesizer.utils.symbols import symbols
 from synthesizer.utils.text import sequence_to_text
-from vocoder.display import *
 
 
 def np_now(x: torch.Tensor): return x.detach().cpu().numpy()
@@ -24,8 +26,8 @@ def time_string():
     return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
-def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup_every: int, force_restart: bool,
-          hparams):
+def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int, backup_every: int, force_restart: bool,
+          hparams, unfreeze_schedule: dict):
     models_dir.mkdir(exist_ok=True)
 
     model_dir = models_dir.joinpath(run_id)
@@ -40,13 +42,12 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
     meta_folder.mkdir(exist_ok=True)
 
     weights_fpath = model_dir / f"synthesizer.pt"
-    metadata_fpath = syn_dir.joinpath("train.txt")
+    metadata_fpath = Path(syn_dir)
 
     print("Checkpoint path: {}".format(weights_fpath))
     print("Loading training data from: {}".format(metadata_fpath))
     print("Using model: Tacotron")
 
-    # Bookkeeping
     time_window = ValueWindow(100)
     loss_window = ValueWindow(100)
 
@@ -63,7 +64,7 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
     print("Using device:", device)
 
     # Instantiate Tacotron Model
-    print("\nInitialising Tacotron Model...\n")
+    print("\nInitializing Tacotron Model...\n")
     model = Tacotron(embed_dims=hparams.tts_embed_dims,
                      num_chars=len(symbols),
                      encoder_dims=hparams.tts_encoder_dims,
@@ -79,8 +80,22 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
                      stop_threshold=hparams.tts_stop_threshold,
                      speaker_embedding_size=hparams.speaker_embedding_size).to(device)
 
-    # Initialize the optimizer
-    optimizer = optim.Adam(model.parameters())
+    # Gradual unfreezing logic
+    print("\nApplying gradual unfreezing schedule...")
+    for name, param in model.named_parameters():
+        param.requires_grad = False  # Freeze all layers initially
+    print("All layers are initially frozen.")
+
+    # Optimizer with layer-wise learning rates
+    optimizer_params = []
+    for layer, lr in unfreeze_schedule.items():
+        for name, param in model.named_parameters():
+            if layer in name:
+                param.requires_grad = True
+                optimizer_params.append({'params': param, 'lr': lr})
+                print(f"Layer {name} is now trainable with learning rate {lr}")
+
+    optimizer = optim.Adam(optimizer_params)
 
     # Load the weights
     if force_restart or not weights_fpath.exists():
@@ -93,41 +108,32 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
             for symbol in symbols:
                 if symbol == " ":
                     symbol = "\\s"  # For visual purposes, swap space with \s
-
                 f.write("{}\n".format(symbol))
-
     else:
         print("\nLoading weights at %s" % weights_fpath)
-        model.load(weights_fpath, optimizer)
+        model.load(weights_fpath) # Reset optimizer 
+        model.register_buffer("step", torch.tensor(0)) 
         print("Tacotron weights loaded from step %d" % model.step)
 
-    # Initialize the dataset
-    metadata_fpath = syn_dir.joinpath("train.txt")
-    mel_dir = syn_dir.joinpath("mels")
-    embed_dir = syn_dir.joinpath("embeds")
-    dataset = SynthesizerDataset(metadata_fpath, mel_dir, embed_dir, hparams)
-
+    # Dataset and DataLoader initialization
+    dataset = SynthesizerDataset(metadata_fpath, hparams)
+    print('load dataset')
+    # Training loop
     for i, session in enumerate(hparams.tts_schedule):
+        
         current_step = model.get_step()
 
         r, lr, max_step, batch_size = session
-
         training_steps = max_step - current_step
 
-        # Do we need to change to the next session?
         if current_step >= max_step:
-            # Are there no further sessions than the current one?
             if i == len(hparams.tts_schedule) - 1:
-                # We have completed training. Save the model and exit
                 model.save(weights_fpath, optimizer)
                 break
             else:
-                # There is a following session, go to it
                 continue
-
         model.r = r
 
-        # Begin the training
         simple_table([(f"Steps with r={r}", str(training_steps // 1000) + "k Steps"),
                       ("Batch Size", batch_size),
                       ("Learning Rate", lr),
@@ -143,19 +149,30 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
         steps_per_epoch = np.ceil(total_iters / batch_size).astype(np.int32)
         epochs = np.ceil(training_steps / steps_per_epoch).astype(np.int32)
 
-        for epoch in range(1, epochs+1):
+        for epoch in range(1, epochs + 1):
+            # Dynamically unfreeze layers based on schedule
+            for layer, epoch_to_unfreeze in unfreeze_schedule.items():
+                if epoch >= epoch_to_unfreeze:
+                    for name, param in model.named_parameters():
+                        if layer in name and not param.requires_grad:
+                            param.requires_grad = True
+                            print(f"Unfroze layer {name} at epoch {epoch}")
+
+
             for i, (texts, mels, embeds, idx) in enumerate(data_loader, 1):
                 start_time = time.time()
 
                 # Generate stop tokens for training
                 stop = torch.ones(mels.shape[0], mels.shape[2])
                 for j, k in enumerate(idx):
-                    stop[j, :int(dataset.metadata[k][4])-1] = 0
+                    mel_path = dataset.metadata.iloc[k, 4]  
+                    stop_frame_length = torch.load(mel_path).shape[-1]
+                    stop[j, :int(stop_frame_length) - 1] = 0
 
-                texts = texts.to(device)
-                mels = mels.to(device)
-                embeds = embeds.to(device)
-                stop = stop.to(device)
+                texts = torch.tensor(texts).to(device)
+                mels = torch.tensor(mels).to(device)
+                embeds = torch.tensor(embeds).to(device)
+                stop = torch.tensor(stop).to(device)
 
                 # Forward pass
                 # Parallelize model onto GPUS using workaround due to python bug
@@ -188,7 +205,7 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
                 k = step // 1000
 
                 msg = f"| Epoch: {epoch}/{epochs} ({i}/{steps_per_epoch}) | Loss: {loss_window.average:#.4} | " \
-                      f"{1./time_window.average:#.2} steps/s | Step: {k}k | "
+                    f"{1./time_window.average:#.2} steps/s | Step: {k}k | "
                 stream(msg)
 
                 # Backup or save model as appropriate
@@ -209,22 +226,23 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int,  backup
                         # At most, generate samples equal to number in the batch
                         if sample_idx + 1 <= len(texts):
                             # Remove padding from mels using frame length in metadata
-                            mel_length = int(dataset.metadata[idx[sample_idx]][4])
+                            mel_path = dataset.metadata.iloc[idx[sample_idx], 4]
+                            mel_length = torch.load(mel_path).shape[-1]
                             mel_prediction = np_now(m2_hat[sample_idx]).T[:mel_length]
                             target_spectrogram = np_now(mels[sample_idx]).T[:mel_length]
                             attention_len = mel_length // model.r
 
                             eval_model(attention=np_now(attention[sample_idx][:, :attention_len]),
-                                       mel_prediction=mel_prediction,
-                                       target_spectrogram=target_spectrogram,
-                                       input_seq=np_now(texts[sample_idx]),
-                                       step=step,
-                                       plot_dir=plot_dir,
-                                       mel_output_dir=mel_output_dir,
-                                       wav_dir=wav_dir,
-                                       sample_num=sample_idx + 1,
-                                       loss=loss,
-                                       hparams=hparams)
+                                    mel_prediction=mel_prediction,
+                                    target_spectrogram=target_spectrogram,
+                                    input_seq=np_now(texts[sample_idx]),
+                                    step=step,
+                                    plot_dir=plot_dir,
+                                    mel_output_dir=mel_output_dir,
+                                    wav_dir=wav_dir,
+                                    sample_num=sample_idx + 1,
+                                    loss=loss,
+                                    hparams=hparams)
 
                 # Break out of loop to update training schedule
                 if step >= max_step:
@@ -256,3 +274,69 @@ def eval_model(attention, mel_prediction, target_spectrogram, input_seq, step,
                      target_spectrogram=target_spectrogram,
                      max_len=target_spectrogram.size // hparams.num_mels)
     print("Input at step {}: {}".format(step, sequence_to_text(input_seq)))
+
+def stream(message) :
+    try:
+        sys.stdout.write("\r{%s}" % message)
+    except:
+        #Remove non-ASCII characters from message
+        message = ''.join(i for i in message if ord(i)<128)
+        sys.stdout.write("\r{%s}" % message)
+
+def simple_table(item_tuples) :
+
+    border_pattern = '+---------------------------------------'
+    whitespace = '                                            '
+
+    headings, cells, = [], []
+
+    for item in item_tuples :
+
+        heading, cell = str(item[0]), str(item[1])
+
+        pad_head = True if len(heading) < len(cell) else False
+
+        pad = abs(len(heading) - len(cell))
+        pad = whitespace[:pad]
+
+        pad_left = pad[:len(pad)//2]
+        pad_right = pad[len(pad)//2:]
+
+        if pad_head :
+            heading = pad_left + heading + pad_right
+        else :
+            cell = pad_left + cell + pad_right
+
+        headings += [heading]
+        cells += [cell]
+
+    border, head, body = '', '', ''
+
+    for i in range(len(item_tuples)) :
+
+        temp_head = f'| {headings[i]} '
+        temp_body = f'| {cells[i]} '
+
+        border += border_pattern[:len(temp_head)]
+        head += temp_head
+        body += temp_body
+
+        if i == len(item_tuples) - 1 :
+            head += '|'
+            body += '|'
+            border += '+'
+
+    print(border)
+    print(head)
+    print(border)
+    print(body)
+    print(border)
+    print(' ')
+
+def save_attention(attn, path):
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(12, 6))
+    plt.imshow(attn.T, interpolation='nearest', aspect='auto')
+    fig.savefig(f'{path}.png', bbox_inches='tight')
+    plt.close(fig)

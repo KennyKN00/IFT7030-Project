@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from synthesizer.utils.symbols import symbols
 from torch.nn.utils.rnn import pad_sequence
 from matplotlib import pyplot as plt
+import torch.nn.functional as F
 
 
 # Define paths
@@ -17,7 +18,7 @@ VAL_METADATA_PATH = "data/val/metadata.csv"
 SAVE_PATH = "models/fine_tuned_synthesizer.pt"
 
 # Hyperparameters
-EPOCHS = 100
+EPOCHS = 500
 LEARNING_RATE = 1e-4
 BATCH_SIZE = 16
 
@@ -31,7 +32,7 @@ def get_loss_curves(epochs, train_losses, val_losses):
     plt.ylabel('Loss')
     plt.title('Loss Curves')
     plt.legend()
-    plt.savefig('images/Loss.png') 
+    plt.savefig('images/Loss_after.png') 
     plt.show()
 
 
@@ -96,100 +97,90 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
     number_epochs = 0
     
     print("INFO : Starting fine-tuning")
-    for epoch in range(epochs):
+    for epoch in range(1, epochs + 1):
         train_loss = 0
         num_batches = 0
-        number_epochs += 1
-        
+
+        # Training Loop
+        synthesizer.train()  # Set model to training mode
         for batch in train_loader:
             optimizer.zero_grad()
 
-            mel_specs = batch["mel"].to(device)
+            mels = batch["mel"].to(device)
             texts = batch["transcript"]
-            speaker_embeddings = batch["speaker_embeddings"].to(device)
+            embeds = batch["speaker_embeddings"].to(device)
             
             text_sequences = [torch.tensor(text_to_sequence(text, ["english_cleaners"]), dtype=torch.long) for text in texts]
-            text_sequences = pad_sequence(text_sequences, batch_first=True).to(device)  
-            
+            text_sequences = pad_sequence(text_sequences, batch_first=True).to(device) 
+
             # Forward pass
-            mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(
-                x=text_sequences,
-                m=mel_specs,
-                speaker_embedding=speaker_embeddings
-            )
-            
-            min_len = min(mel_outputs.size(2), mel_specs.size(2))
+            mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=text_sequences, m=mels, speaker_embedding=embeds)
+
+            min_len = min(mel_outputs.size(2), mels.size(2))
             mel_outputs = mel_outputs[:, :, :min_len]
             mel_outputs_postnet = mel_outputs_postnet[:, :, :min_len]
-            mel_specs = mel_specs[:, :, :min_len]
+            mels = mels[:, :, :min_len]
 
-            # Compute loss 
-            loss = criterion(mel_outputs, mel_specs) + criterion(mel_outputs_postnet, mel_specs)
-            train_loss += loss.item()
-            num_batches += 1
+            # Compute training losses
+            mel_loss = F.mse_loss(mel_outputs, mels) + F.l1_loss(mel_outputs, mels)
+            mel_postnet_loss = F.mse_loss(mel_outputs_postnet, mels)
+            loss = mel_loss + mel_postnet_loss 
 
             # Backward pass and optimization
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(synthesizer.parameters(), max_norm=1.0)
             optimizer.step()
+
+            train_loss += loss.item()
+            num_batches += 1
 
         train_loss /= num_batches
         train_losses.append(train_loss)
-        print(f"Epoch {epoch + 1}/{EPOCHS}, Training Loss: {train_loss}")
+        print(f"Epoch {epoch}, Training Loss: {train_loss:.4f}")
 
-         # Validation loop
-        synthesizer.eval()
+        # Validation Loop
+        synthesizer.eval()  # Set model to evaluation mode
         val_loss = 0
-        num_batches = 0
-        with torch.no_grad():
+        num_val_batches = 0
+        with torch.no_grad():  # No gradient calculation for validation
             for batch in val_loader:
-                mel_specs = batch["mel"].to(device)
-                texts = batch["transcript"]
-                speaker_embeddings = batch["speaker_embeddings"].to(device)
+                optimizer.zero_grad()
 
+                mels = batch["mel"].to(device)
+                texts = batch["transcript"]
+                embeds = batch["speaker_embeddings"].to(device)
+                
                 text_sequences = [torch.tensor(text_to_sequence(text, ["english_cleaners"]), dtype=torch.long) for text in texts]
-                text_sequences = pad_sequence(text_sequences, batch_first=True).to(device)
+                text_sequences = pad_sequence(text_sequences, batch_first=True).to(device) 
 
                 # Forward pass
-                mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(
-                    x=text_sequences,
-                    m=mel_specs,
-                    speaker_embedding=speaker_embeddings,
-                )
-                
-                min_len = min(mel_outputs.size(2), mel_specs.size(2))
+                mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=text_sequences, m=mels, speaker_embedding=embeds)
+
+                min_len = min(mel_outputs.size(2), mels.size(2))
                 mel_outputs = mel_outputs[:, :, :min_len]
                 mel_outputs_postnet = mel_outputs_postnet[:, :, :min_len]
-                mel_specs = mel_specs[:, :, :min_len]
+                mels = mels[:, :, :min_len]
 
-                # Compute loss 
-                loss = criterion(mel_outputs, mel_specs) + criterion(mel_outputs_postnet, mel_specs)
+                # Compute validation losses
+                mel_loss = F.mse_loss(mel_outputs, mels) + F.l1_loss(mel_outputs, mels)
+                mel_postnet_loss = F.mse_loss(mel_outputs_postnet, mels)
+                loss = mel_loss + mel_postnet_loss 
+
                 val_loss += loss.item()
-                num_batches += 1
-        
-        val_loss /= num_batches
+                num_val_batches += 1
+
+        val_loss /= num_val_batches
         val_losses.append(val_loss)
-        print(f"Epoch {epoch + 1}/{epochs}, Validation Loss: {val_loss}")
+        print(f"Epoch {epoch}, Validation Loss: {val_loss:.4f}")
 
-        # Check for improvement
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0  # Reset patience counter
-            # Save the best model
-            torch.save(synthesizer.state_dict(), "best_model.pt")
-            print("INFO: Best model saved")
-        else:
-            patience_counter += 1
-            print(f"INFO: No improvement for {patience_counter} epochs")
-
-        # Early stopping condition
-        if patience_counter >= patience:
-            print(f"INFO: Early stopping at epoch {epoch + 1}")
-            break
-        
-        if (epoch+1) % 10 == 0:
-            checkpoint_path = f"models/fine_tuned_synthesizer_epoch_{epoch}.pt"
-            torch.save(synthesizer.state_dict(), checkpoint_path)
-            print(f"Model saved at {checkpoint_path}")
+        number_epochs += 1
+        # Save Model Checkpoint
+        if epoch % 10 == 0 : 
+            torch.save({
+                "model_state": synthesizer.state_dict(),
+                "optimizer_state": optimizer.state_dict(),
+                "epoch": epoch,
+            }, f"models/checkpoint_epoch_{epoch}.pt")
 
     get_loss_curves(number_epochs, train_losses, val_losses)
     print(f"Fine-tuned model saved to {SAVE_PATH}")

@@ -11,7 +11,9 @@ import librosa
 import numpy as np
 import preprocessing.data_preprocessing as preprocessing
 from synthesizer.inference import Synthesizer
-import fine_tuning as train
+# import fine_tuning as train
+from synthesizer import train
+from synthesizer.hparams import hparams
 
 def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=512, title="Mel-Spectrogram", path=""):
     plt.figure(figsize=(10, 4))
@@ -40,7 +42,7 @@ def clone_voice(audio_path, trained_path):
 
     # Generate mel spectrogram
 
-    mel_spectrogram = synthesizer.synthesize_spectrograms([text], embedding)[0]
+    mel_spectrogram = synthesizer.synthesize_spectrograms([text], embedding)
 
     return torch.tensor(mel_spectrogram)
 
@@ -59,17 +61,35 @@ def main():
     
     audio_path = "audio_records/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
-    fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
-    
+    fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
+
     # Inital mel
     # compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
     # mel = clone_voice(audio_path, pretrained_model_path)
+    # print(mel)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
 
-    train.run()
-    
+    # Get mel after fine-tuning
+    # mel = clone_voice(audio_path, fine_tuned_model_path)
+    # plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
+
+    # print(torch.load("models/checkpoint_epoch_10.pt"))
+
+    train.train(run_id="",
+      syn_dir="data/train/metadata.csv",
+      models_dir=Path("models"),
+      save_every=1000,
+      backup_every=5000,
+      force_restart=False,
+      hparams=hparams,
+      unfreeze_schedule={
+          "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
+          "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
+          "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
+      })
+
 
 if __name__ == '__main__':
     main()

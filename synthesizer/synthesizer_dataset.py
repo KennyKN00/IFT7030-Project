@@ -3,48 +3,44 @@ from torch.utils.data import Dataset
 import numpy as np
 from pathlib import Path
 from synthesizer.utils.text import text_to_sequence
+import pandas as pd
 
 
 class SynthesizerDataset(Dataset):
-    def __init__(self, metadata_fpath: Path, mel_dir: Path, embed_dir: Path, hparams):
-        print("Using inputs from:\n\t%s\n\t%s\n\t%s" % (metadata_fpath, mel_dir, embed_dir))
+    def __init__(self, metadata_csv_path: Path, hparams):
+        # Load the CSV file
+        self.metadata = pd.read_csv(metadata_csv_path)
         
-        with metadata_fpath.open("r") as metadata_file:
-            metadata = [line.split("|") for line in metadata_file]
+        # Validate required columns
+        required_columns = ["audio_path", "transcript", "speaker_id", "speaker_embedding_path", "mel_path"]
+        if not all(col in self.metadata.columns for col in required_columns):
+            raise ValueError(f"Metadata file must contain the following columns: {required_columns}")
         
-        mel_fnames = [x[1] for x in metadata if int(x[4])]
-        mel_fpaths = [mel_dir.joinpath(fname) for fname in mel_fnames]
-        embed_fnames = [x[2] for x in metadata if int(x[4])]
-        embed_fpaths = [embed_dir.joinpath(fname) for fname in embed_fnames]
-        self.samples_fpaths = list(zip(mel_fpaths, embed_fpaths))
-        self.samples_texts = [x[5].strip() for x in metadata if int(x[4])]
-        self.metadata = metadata
+        # Extract file paths and texts
+        self.mel_fpaths = self.metadata["mel_path"].map(Path).to_list()
+        self.embed_fpaths = self.metadata["speaker_embedding_path"].map(Path).to_list()
+        self.texts = self.metadata["transcript"].to_list()
         self.hparams = hparams
-        
-        print("Found %d samples" % len(self.samples_fpaths))
+
+        print(f"Found {len(self.mel_fpaths)} samples in {metadata_csv_path}")
     
     def __getitem__(self, index):  
-        # Sometimes index may be a list of 2 (not sure why this happens)
-        # If that is the case, return a single item corresponding to first element in index
-        if index is list:
-            index = index[0]
+        # Load the mel spectrogram (as a PyTorch tensor)
+        mel_path = self.mel_fpaths[index]
+        mel = torch.tensor(torch.load(mel_path)).float()
 
-        mel_path, embed_path = self.samples_fpaths[index]
-        mel = np.load(mel_path).T.astype(np.float32)
-        
-        # Load the embed
-        embed = np.load(embed_path)
+        # Load the speaker embedding (as a PyTorch tensor)
+        embed_path = self.embed_fpaths[index]
+        embed = torch.tensor(torch.load(embed_path)).float()
 
-        # Get the text and clean it
-        text = text_to_sequence(self.samples_texts[index], self.hparams.tts_cleaner_names)
-        
-        # Convert the list returned by text_to_sequence to a numpy array
-        text = np.asarray(text).astype(np.int32)
+        # Convert the text to a sequence of tokens
+        text = text_to_sequence(self.texts[index], self.hparams.tts_cleaner_names)
+        text = torch.tensor(text, dtype=torch.int32)
 
-        return text, mel.astype(np.float32), embed.astype(np.float32), index
+        return text, mel, embed, index
 
     def __len__(self):
-        return len(self.samples_fpaths)
+        return len(self.mel_fpaths)
 
 
 def collate_synthesizer(batch, r, hparams):
@@ -69,24 +65,18 @@ def collate_synthesizer(batch, r, hparams):
         mel_pad_value = 0
 
     mel = [pad2d(x[1], max_spec_len, pad_value=mel_pad_value) for x in batch]
-    mel = np.stack(mel)
+    mel = torch.stack(mel)
 
     # Speaker embedding (SV2TTS)
-    embeds = np.array([x[2] for x in batch])
+    embeds = torch.stack([x[2] for x in batch])
 
     # Index (for vocoder preprocessing)
     indices = [x[3] for x in batch]
 
-
-    # Convert all to tensor
-    chars = torch.tensor(chars).long()
-    mel = torch.tensor(mel)
-    embeds = torch.tensor(embeds)
-
     return chars, mel, embeds, indices
 
 def pad1d(x, max_len, pad_value=0):
-    return np.pad(x, (0, max_len - len(x)), mode="constant", constant_values=pad_value)
+    return torch.nn.functional.pad(x, (0, max_len - len(x)), value=pad_value)
 
 def pad2d(x, max_len, pad_value=0):
-    return np.pad(x, ((0, 0), (0, max_len - x.shape[-1])), mode="constant", constant_values=pad_value)
+    return torch.nn.functional.pad(x, (0, max_len - x.shape[-1]), value=pad_value)

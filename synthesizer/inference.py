@@ -63,8 +63,8 @@ class Synthesizer:
         self._model.load(self.model_fpath)
         self._model.eval()
 
-        if self.verbose:
-            print("Loaded synthesizer \"%s\" trained to step %d" % (self.model_fpath.name, self._model.state_dict()["step"]))
+        # if self.verbose:
+            # print("Loaded synthesizer \"%s\" trained to step %d" % (self.model_fpath.name, self._model.state_dict()["step"]))
 
     def synthesize_spectrograms(self, texts: List[str],
                                 embeddings: Union[np.ndarray, List[np.ndarray]],
@@ -113,14 +113,16 @@ class Synthesizer:
             chars = torch.tensor(chars).long().to(self.device)
             speaker_embeddings = torch.tensor(speaker_embeds).float().to(self.device)
 
+
             # Inference
             _, mels, alignments = self._model.generate(chars, speaker_embeddings)
             mels = mels.detach().cpu().numpy()
-            for m in mels:
-                # Trim silence from end of each spectrogram
-                while np.max(m[:, -1]) < hparams.tts_stop_threshold:
-                    m = m[:, :-1]
-                specs.append(m)
+            specs.append(mels.squeeze(0))
+            # for m in mels:
+            #     # Trim silence from end of each spectrogram
+            #     while np.max(m[:, -1]) < hparams.tts_stop_threshold:
+            #         m = m[:, :-1]
+            #     specs.append(m)
 
         if self.verbose:
             print("\n\nDone.\n")
