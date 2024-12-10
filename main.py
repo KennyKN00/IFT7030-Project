@@ -9,13 +9,13 @@ import evaluation.plot_mel as plot
 import matplotlib.pyplot as plt
 import librosa
 import numpy as np
-import preprocessing.data_preprocessing as preprocessing
+import data_preprocessing as preprocessing
 from synthesizer.inference import Synthesizer
 # import fine_tuning as train
 from synthesizer import train
 from synthesizer.hparams import hparams
 
-def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=512, title="Mel-Spectrogram", path=""):
+def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=256, title="Mel-Spectrogram", path=""):
     plt.figure(figsize=(10, 4))
     plt.imshow(mel_spectrogram, aspect='auto', origin='lower', cmap='viridis')
     plt.colorbar(format="%+2.0f dB")
@@ -50,45 +50,47 @@ def compute_initial_mel(audio_path, trained_model_path):
     synthesizer = Synthesizer(trained_model_path)
     mel = synthesizer.make_spectrogram(audio_path)
 
-    plot_mel_spectrogram(mel, path="images/initial_mel.png")
+    plot_mel_spectrogram(mel, path="images/test_2.png")
     
 
 def main():
     # recorder = Recorder()
     # recorder.run()
     
-    # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
+    preprocessing.prepare_data(encoder)
     
-    audio_path = "audio_records/reference.wav"
+    audio_path = "data/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
 
     # Inital mel
-    # compute_initial_mel(audio_path, pretrained_model_path)
+    # compute_initial_mel("data/train/audio_train/p286/p286_003_mic1.wav", pretrained_model_path)
     
     # Get mel before fine-tuning
     # mel = clone_voice(audio_path, pretrained_model_path)
-    # print(mel)
+    # print(mel.shape)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
 
     # Get mel after fine-tuning
     # mel = clone_voice(audio_path, fine_tuned_model_path)
-    # plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
+    # mel_tensor = preprocessing.compute_mel_spectrogram(Path('data/train/audio_train/p286/p286_003_mic1.wav')) 
+    # print(mel_tensor.shape)
+    # plot_mel_spectrogram(mel_tensor, path="images/atest.png")
 
     # print(torch.load("models/checkpoint_epoch_10.pt"))
 
-    train.train(run_id="",
-      syn_dir="data/train/metadata.csv",
-      models_dir=Path("models"),
-      save_every=1000,
-      backup_every=5000,
-      force_restart=False,
-      hparams=hparams,
-      unfreeze_schedule={
-          "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
-          "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
-          "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
-      })
+    # train.train(run_id="",
+    #   syn_dir="data/train/metadata.csv",
+    #   models_dir=Path("models"),
+    #   save_every=1000,
+    #   backup_every=5000,
+    #   force_restart=False,
+    #   hparams=hparams,
+    #   unfreeze_schedule={
+    #       "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
+    #       "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
+    #       "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
+    #   })
 
 
 if __name__ == '__main__':
