@@ -100,7 +100,7 @@ def processing(encoder, metadata_path):
     metadata = pd.read_csv(metadata_path)
     
     # Create a directory for saving embeddings
-    embedding_folder = "data/val/speaker_embeddings"
+    embedding_folder = "data/train/speaker_embeddings"
     os.makedirs(embedding_folder, exist_ok=True)
 
     # Iterate through each row in metadata
@@ -116,7 +116,7 @@ def processing(encoder, metadata_path):
         os.makedirs(speaker_folder, exist_ok=True)
 
         # Save the embedding as a .pt file
-        embedding_file = normalize_path(os.path.join(speaker_folder, os.path.basename(audio_path).replace(".flac", "_em.pt")))
+        embedding_file = normalize_path(os.path.join(speaker_folder, os.path.basename(audio_path).replace(".wav", "_em.pt")))
         torch.save(embedding, embedding_file)
         
         metadata.loc[idx, "speaker_embedding_path"] = str(embedding_file)
@@ -128,7 +128,7 @@ def processing(encoder, metadata_path):
 def audio_to_mel(metadata_path):
     metadata = pd.read_csv(metadata_path)
     
-    mel_dir = "data/val/mel_spectrograms"
+    mel_dir = "data/train/mel_spectrograms"
     os.makedirs(mel_dir, exist_ok=True)
     
     for index, row in metadata.iterrows():
@@ -141,7 +141,7 @@ def audio_to_mel(metadata_path):
         os.makedirs(mel_folder, exist_ok=True)
         
         # Save mel-spectrogram to file
-        mel_path = normalize_path(os.path.join(mel_folder, os.path.basename(audio_path).replace(".flac", "_mel.pt")))
+        mel_path = normalize_path(os.path.join(mel_folder, os.path.basename(audio_path).replace(".wav", "_mel.pt")))
         torch.save(mel_spec, mel_path)
 
         # Add the mel_path to the metadata
@@ -215,9 +215,8 @@ def compute_mel_spectrogram(
     
     return mel_spectrogram_db
         
-def prepare_data(encoder_inference):
-    metadata_path = "data/train/metadata.csv"
+def prepare_data(encoder_inference, metadata_path):
     preparing()
-    # processing(encoder_inference, metadata_path)
-    # audio_to_mel(metadata_path)
+    processing(encoder_inference, metadata_path)
+    audio_to_mel(metadata_path)
     
