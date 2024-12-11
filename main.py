@@ -80,18 +80,18 @@ def main():
 
     # print(torch.load("models/checkpoint_epoch_10.pt"))
 
-    # train.train(run_id="",
-    #   syn_dir="data/train/metadata.csv",
-    #   models_dir=Path("models"),
-    #   save_every=1000,
-    #   backup_every=5000,
-    #   force_restart=False,
-    #   hparams=hparams,
-    #   unfreeze_schedule={
-    #       "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
-    #       "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
-    #       "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
-    #   })
+    train.train(run_id="",
+      syn_dir="data/train/metadata.csv",
+      models_dir=Path("models"),
+      save_every=1000,
+      backup_every=5000,
+      force_restart=False,
+      hparams=hparams,
+      unfreeze_schedule={
+          "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
+          "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
+          "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
+      })
 
 
 if __name__ == '__main__':
