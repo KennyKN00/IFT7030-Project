@@ -62,11 +62,7 @@ def main():
     audio_path = "data/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
-    
-    mel = torch.tensor(torch.load("data/train/mel_spectrograms/p252/p252_005_mic1_mel.pt"))
-    print(mel.shape)
-    plot_mel_spectrogram(mel, path="images/test_3.png")
-    
+        
 
     # Inital mel
     # compute_initial_mel("data/train/audio_train/p286/p286_003_mic1.wav", pretrained_model_path)
