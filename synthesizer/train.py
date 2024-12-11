@@ -170,9 +170,9 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int, backup_
                     stop[j, :int(stop_frame_length) - 1] = 0
 
                 texts = torch.tensor(texts).to(device)
-                mels = torch.tensor(mels).to(device)
-                embeds = torch.tensor(embeds).to(device)
-                stop = torch.tensor(stop).to(device)
+                mels = mels.to(device)
+                embeds = embeds.to(device)
+                stop = stop.to(device)
 
                 # Forward pass
                 # Parallelize model onto GPUS using workaround due to python bug

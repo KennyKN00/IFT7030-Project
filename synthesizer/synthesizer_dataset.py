@@ -4,6 +4,13 @@ import numpy as np
 from pathlib import Path
 from synthesizer.utils.text import text_to_sequence
 import pandas as pd
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch")
+warnings.filterwarnings(
+    "ignore",
+    message="You are using `torch.load` with `weights_only=False`",
+    category=FutureWarning
+)
 
 
 class SynthesizerDataset(Dataset):
