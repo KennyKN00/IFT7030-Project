@@ -61,19 +61,22 @@ def main():
     
     audio_path = "audio_records/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
-    fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
+    # fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
 
     # Inital mel
     # compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
-    # mel = clone_voice(audio_path, pretrained_model_path)
+    mel = clone_voice(audio_path, pretrained_model_path)
     # print(mel)
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
 
     # Get mel after fine-tuning
     # mel = clone_voice(audio_path, fine_tuned_model_path)
+    vocoder.writeMEL(mel, "Mels/TestAfterfinetuning.npy")
     # plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
+    mel_loaded = vocoder.readMEL("Mels/TestAfterfinetuning.npy")
+    print(mel_loaded.shape)
 
     # print(torch.load("models/checkpoint_epoch_10.pt"))
 

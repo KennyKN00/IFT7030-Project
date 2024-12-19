@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import torch
 
+def writeMEL(MEL, path):
+    mel_np = MEL.numpy()
+    np.save(path, mel_np)
+
+def readMEL(path):
+    mel_np = np.load(path)
+    mel = torch.from_numpy(mel_np)
+    return mel
 
 def loadSignal(filename):
     y, sr = librosa.load(filename)
