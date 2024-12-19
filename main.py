@@ -79,9 +79,11 @@ def main():
     # print(mel_loaded.shape)
 
     # Generate a wav file from MEL
-    wav_path = "outputs/example.wav"
+    wav_path = "outputs/example2.wav"
     vocoder.generateWAV(mel, wav_path)
     print("Done!")
+    # Listen to the wav file
+    vocoder.playWav(wav_path)
 
 
     # print(torch.load("models/checkpoint_epoch_10.pt"))

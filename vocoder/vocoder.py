@@ -2,6 +2,7 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import soundfile as sf
+import sounddevice as sd
 import torch
 import torchaudio
 
@@ -98,3 +99,8 @@ def generateWAV(MEL, path = "outputs/new_output.wav", P = True):
         y_hat = HIFIGAN_multi_MEL2WAV(MEL)
     writeWAV(path, y_hat)
     return y_hat
+
+def playWav(path):
+    data, samplerate = sf.read(path)
+    sd.play(data, samplerate)
+    sd.wait()
