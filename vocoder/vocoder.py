@@ -3,53 +3,98 @@ import librosa
 import matplotlib.pyplot as plt
 import soundfile as sf
 import torch
+import torchaudio
+
+from speechbrain.inference.vocoders import HIFIGAN
+from speechbrain.lobes.models.FastSpeech2 import mel_spectogram
+from scipy.io.wavfile import write
+
+hifi_gan = HIFIGAN.from_hparams(source="speechbrain/tts-hifigan-ljspeech",
+                                savedir="pretrained_models/tts-hifigan-ljspeech")
+hifi_gan_multi = HIFIGAN.from_hparams(source="speechbrain/tts-hifigan-libritts-22050Hz",
+                                      savedir="pretrained_models/tts-hifigan-libritts-22050Hz")
+
+
+def writeWAV(path, WAV, sr=22050):
+    write(path, 22050, WAV)
+
 
 def writeMEL(MEL, path):
     mel_np = MEL.numpy()
     np.save(path, mel_np)
+
 
 def readMEL(path):
     mel_np = np.load(path)
     mel = torch.from_numpy(mel_np)
     return mel
 
-def loadSignal(filename):
-    y, sr = librosa.load(filename)
-    return y, sr
 
-def librosaWAV2MEL(y, sr = 22050, n=2048):
-    MEL = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n)
+def librosaWAV2MEL(path):  # From a file path
+    y, sr = librosa.load(path)
+    MEL = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=256, win_length=1024, n_mels=80)
+    MEL = torch.from_numpy(MEL).to(device='cuda', dtype=torch.float32)
     return MEL
 
-def librosaMEL2WAV(MEL, sr = 22050, n=1024):
+
+def HIFIWAV2MEL(path):  # From a file path
+    # signal, rate = torchaudio.load(path)
+    # signal, rate = torchaudio.load('speechbrain/tts-hifigan-ljspeech/example.wav')
+
+    signal, sr = librosa.load(path)
+    signal = torch.tensor(signal)
+    spectrogram, _ = mel_spectogram(
+        audio=signal.squeeze(),
+        sample_rate=22050,
+        hop_length=256,
+        win_length=None,
+        n_mels=80,
+        n_fft=1024,
+        f_min=0.0,
+        f_max=8000.0,
+        power=1,
+        normalized=False,
+        min_max_energy_norm=True,
+        norm="slaney",
+        mel_scale="slaney",
+        compression=True
+    )
+
+    return spectrogram
+
+
+def griffinLimMEL2WAV(MEL, sr=22050, n=1024):
     if isinstance(MEL, torch.Tensor):
         MEL = MEL.detach().cpu().numpy()
         MEL = MEL.astype(np.float32)
-    S = librosa.feature.inverse.mel_to_stft(MEL, sr=sr, n_fft=n)
+    S = librosa.feature.inverse.mel_to_stft(MEL, sr=sr, n_fft=1024)
     y_hat = librosa.istft(S, hop_length=256, win_length=n)
+    y_hat = y_hat.flatten()
     return y_hat
 
-def griffinLimMEL2WAV(MEL, sr = 22050, n=2048):
-    S = librosa.feature.inverse.mel_to_stft(MEL, sr=sr, n_fft=n)
-    y_hat = librosa.griffinlim(S, hop_length=n // 4, win_length=n, window="hamming")
+
+def boost(audio, gain_db):
+    gain = 10 ** (gain_db / 20)
+    audio_boost = audio * gain
+
+    return audio_boost
+
+
+def HIFIGANMEL2WAV(MEL):
+    y_hat = hifi_gan.decode_batch(MEL)
+    y_hat = y_hat.flatten().numpy()
     return y_hat
 
-def generateOutput(filename, algo = "inv"):
-    y, sr = librosa.load(filename)
-    MEL = librosaWAV2MEL(y, sr)
-    y_hat = None
-    if algo == "griffin":
-        y_hat = griffinLimMEL2WAV(MEL, sr)
-        sf.write("OutputGriffin.wav", y_hat, sr)
-    elif algo == "inv":
-        y_hat = librosaMEL2WAV(MEL, sr)
-        sf.write("OutputInv.wav", y_hat, sr)
-    elif algo == "waveglow":
-        pass
+
+def HIFIGAN_multi_MEL2WAV(MEL):
+    y_hat = hifi_gan_multi.decode_batch(MEL)
+    y_hat = y_hat.flatten().numpy()
     return y_hat
 
-# Test
-
-# f = 'input.wav'
-# generateOutput(f, "griffin")
-# generateOutput(f, "inv")
+def generateWAV(MEL, path = "outputs/new_output.wav", P = True):
+    if P:
+        y_hat = HIFIGAN_multi_MEL2WAV(2* MEL) # Adapt to POWER MEL
+    else:
+        y_hat = HIFIGAN_multi_MEL2WAV(MEL)
+    writeWAV(path, y_hat)
+    return y_hat

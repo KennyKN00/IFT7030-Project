@@ -73,10 +73,16 @@ def main():
 
     # Get mel after fine-tuning
     # mel = clone_voice(audio_path, fine_tuned_model_path)
-    vocoder.writeMEL(mel, "Mels/TestAfterfinetuning.npy")
+    # vocoder.writeMEL(mel, "Mels/TestAfterfinetuning.npy")
     # plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
-    mel_loaded = vocoder.readMEL("Mels/TestAfterfinetuning.npy")
-    print(mel_loaded.shape)
+    # mel_loaded = vocoder.readMEL("Mels/TestAfterfinetuning.npy")
+    # print(mel_loaded.shape)
+
+    # Generate a wav file from MEL
+    wav_path = "outputs/example.wav"
+    vocoder.generateWAV(mel, wav_path)
+    print("Done!")
+
 
     # print(torch.load("models/checkpoint_epoch_10.pt"))
 
