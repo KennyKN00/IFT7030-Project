@@ -34,7 +34,7 @@ def clone_voice(audio_path, trained_path):
     # Input text
     text = ""
     
-    text_path = "data/output_text.txt"
+    text_path = "data/output_text3.txt"
     with open(text_path, "r", encoding="utf-8") as file:
         text = file.read()
 
@@ -57,7 +57,7 @@ def main():
     
     # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
     
-    audio_path = "audio_records/reference.wav"
+    audio_path = "audio_records/reference5.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
     fine_tuned_model_path = "models/fine_tuned_synthesizer.pt"
     
@@ -67,9 +67,9 @@ def main():
     # Get mel before fine-tuning
     mel = clone_voice(audio_path, pretrained_model_path)
     print(mel.shape)
-    mel2 = vocoder.readMEL("MELTEST/mel14orig.npy")
-    vocoder.writeMEL(mel, "MELTEST/mel14.npy")
-    plot_mel_spectrogram(mel2, path="images/melNewParamref2.png")
+
+    vocoder.writeMEL(mel, "MELTEST/mel30.npy")
+    # plot_mel_spectrogram(mel, path="images/mel17t.png")
     # train.run()
 
     

@@ -28,5 +28,11 @@ def compute_wer(reference_path, syntehsized_path):
         reference_text = file.read()
         
     synthesized_text = transform_to_text(syntehsized_path)
+    synthesized_text = synthesized_text.lower()
+
+    reference_text = reference_text.lower()
+
+    print("PREDICTION:", synthesized_text)
+    print("LABEL:", reference_text)
         
     return wer(reference_text, synthesized_text)
