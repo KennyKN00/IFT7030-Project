@@ -34,7 +34,8 @@ def readMEL(path):
 def librosaWAV2MEL(path):  # From a file path
     y, sr = librosa.load(path)
     MEL = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=256, win_length=1024, n_mels=80)
-    MEL = torch.from_numpy(MEL).to(device='cuda', dtype=torch.float32)
+    # MEL = torch.from_numpy(MEL).to(device='cuda', dtype=torch.float32)
+    MEL = torch.from_numpy(MEL).to(dtype=torch.float32)
     return MEL
 
 
