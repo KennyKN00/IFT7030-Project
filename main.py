@@ -7,13 +7,19 @@ from vocoder import vocoder
 import soundfile as sf
 import evaluation.plot_mel as plot
 import matplotlib.pyplot as plt
-import librosa
 import numpy as np
-import data_preprocessing as preprocessing
+import preprocessing.data_preprocessing as preprocessing
 from synthesizer.inference import Synthesizer
-# import fine_tuning as train
-from synthesizer import train
+import fine_tuning as train
+# from synthesizer import train
 from synthesizer.hparams import hparams
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message="You are using `torch.load` with `weights_only=False`",
+    category=FutureWarning
+)
 
 def plot_mel_spectrogram(mel_spectrogram, sr=22050, hop_length=256, title="Mel-Spectrogram", path=""):
     plt.figure(figsize=(10, 4))
@@ -61,8 +67,17 @@ def main():
     
     audio_path = "data/reference.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
-    fine_tuned_model_path = Path("models/checkpoint_epoch_10.pt")
-        
+    fine_tuned_model_path = Path("models/checkpoint_epoch_870.pt")
+    
+    # checkpoint_path = "models/checkpoint_epoch_500.pt"
+    # checkpoint = torch.load(checkpoint_path)
+
+    # # Reshape the "step" parameter
+    # if "step" in checkpoint["model_state"]:
+    #     checkpoint["model_state"]["step"] = checkpoint["model_state"]["step"].view(1)
+
+    # # Save the modified checkpoint
+    # torch.save(checkpoint, checkpoint_path)
 
     # Inital mel
     # compute_initial_mel("data/train/audio_train/p286/p286_003_mic1.wav", pretrained_model_path)
@@ -73,25 +88,30 @@ def main():
     # plot_mel_spectrogram(mel, path="images/before_fine_tuning_mel.png")
 
     # Get mel after fine-tuning
-    # mel = clone_voice(audio_path, fine_tuned_model_path)
-    # mel_tensor = preprocessing.compute_mel_spectrogram(Path('data/train/audio_train/p286/p286_003_mic1.wav')) 
-    # print(mel_tensor.shape)
-    # plot_mel_spectrogram(mel_tensor, path="images/atest.png")
+    mel_tensor = clone_voice(audio_path, fine_tuned_model_path)
+    mel_tensor = mel_tensor[0, :, :]
+    print(mel_tensor.shape)
+    # plot_mel_spectrogram(mel_tensor, path="images/another_test_500_1.png")
 
-    # print(torch.load("models/checkpoint_epoch_10.pt"))
+    # train.train(run_id="",
+    #   syn_dir="data/train/metadata.csv",
+    #   models_dir=Path("models"),
+    #   save_every=1000,
+    #   backup_every=5000,
+    #   force_restart=False,
+    #   hparams=hparams,
+    #   unfreeze_schedule={
+    #       "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
+    #       "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
+    #       "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
+    #   })
 
-    train.train(run_id="",
-      syn_dir="data/train/metadata.csv",
-      models_dir=Path("models"),
-      save_every=1000,
-      backup_every=5000,
-      force_restart=False,
-      hparams=hparams,
-      unfreeze_schedule={
-          "encoder": 1e-5,  # Encoder unfreezes at epoch 1 with low LR
-          "decoder": 1e-4,  # Decoder unfreezes at epoch 2 with higher LR
-          "postnet": 1e-4   # Postnet unfreezes at epoch 3 with the same LR as decoder
-      })
+    # train.run()
+
+    wav_path = "outputs/example.wav"
+    vocoder.generateWAV(mel_tensor, wav_path)
+    print("Done!")
+
 
 
 if __name__ == '__main__':

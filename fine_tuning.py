@@ -1,4 +1,5 @@
 import torch
+from dataloader import TTSDataLoader, collate_fn
 from synthesizer.models.tacotron import Tacotron
 from synthesizer.utils.text import text_to_sequence
 from pathlib import Path
@@ -18,8 +19,8 @@ VAL_METADATA_PATH = "data/val/metadata.csv"
 SAVE_PATH = "models/fine_tuned_synthesizer.pt"
 
 # Hyperparameters
-EPOCHS = 500
-LEARNING_RATE = 1e-4
+EPOCHS = 5000
+LEARNING_RATE = 1e-5
 BATCH_SIZE = 16
 
 def get_loss_curves(epochs, train_losses, val_losses):
@@ -36,46 +37,7 @@ def get_loss_curves(epochs, train_losses, val_losses):
     plt.show()
 
 
-def load_batch(batch):
-    # Extract mel-spectrograms, transcripts, and speaker IDs
-    mel_targets = [item["mel"].transpose(0,1) for item in batch] 
-    transcripts = [item["transcript"] for item in batch]
-    speaker_embeddings = [item["speaker_embeddings"] for item in batch]
-    speaker_embeddings = torch.stack(speaker_embeddings, dim=0)
-
-    # Pad mel-spectrograms along the time dimension
-    mel_targets_padded = pad_sequence(
-        mel_targets,  # Transpose each to [time, n_mels]
-        batch_first=True,
-        padding_value=0.0
-    )
-    mel_targets_padded = mel_targets_padded.transpose(1, 2)  # Back to [batch, frequency, max_time]
-
-    return {
-        "mel": mel_targets_padded,
-        "transcript": transcripts,
-        "speaker_embeddings": speaker_embeddings,
-    }
-
-class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, metadata):
-        self.metadata = metadata
-
-    def __len__(self):
-        return len(self.metadata)
-
-    def __len__(self):
-        return len(self.metadata)
-
-    def __getitem__(self, idx):
-        row = self.metadata.iloc[idx]
-        mel = torch.tensor(torch.load(row["mel_path"]))
-        transcript = row["transcript"]
-        speaker_embeddings = torch.tensor(torch.load(row["speaker_embedding_path"]), dtype=torch.float32)
-        return {"mel": mel, "transcript": transcript, "speaker_embeddings": speaker_embeddings}
-
-
-def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_RATE, freeze_layers=True, patience=5):
+def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_RATE, freeze_layers=True, patience=5, checkpoint_path=None):
     # Freeze encoder layers to retain zero-shot performance
     if freeze_layers:
         for name, param in synthesizer.named_parameters():
@@ -95,9 +57,19 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
     best_val_loss = float("inf")
     patience_counter = 0
     number_epochs = 0
+    start_epoch = 1
+
+    # ---- Load Checkpoint if Provided ---- #
+    if checkpoint_path:
+        print(f"INFO: Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        synthesizer.load_state_dict(checkpoint["model_state"])
+        optimizer.load_state_dict(checkpoint["optimizer_state"])
+        start_epoch = checkpoint["epoch"] + 1  # Resume from next epoch
+        print(f"INFO: Resuming training from epoch {start_epoch}")
     
     print("INFO : Starting fine-tuning")
-    for epoch in range(1, epochs + 1):
+    for epoch in range(start_epoch, epochs + 1):
         train_loss = 0
         num_batches = 0
 
@@ -106,15 +78,12 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
         for batch in train_loader:
             optimizer.zero_grad()
 
-            mels = batch["mel"].to(device)
-            texts = batch["transcript"]
-            embeds = batch["speaker_embeddings"].to(device)
+            mels = batch["mels"].to(device)
+            texts = batch["transcripts"]
+            embeds = batch["embeddings"].to(device)
             
-            text_sequences = [torch.tensor(text_to_sequence(text, ["english_cleaners"]), dtype=torch.long) for text in texts]
-            text_sequences = pad_sequence(text_sequences, batch_first=True).to(device) 
-
             # Forward pass
-            mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=text_sequences, m=mels, speaker_embedding=embeds)
+            mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=texts, m=mels, speaker_embedding=embeds)
 
             min_len = min(mel_outputs.size(2), mels.size(2))
             mel_outputs = mel_outputs[:, :, :min_len]
@@ -146,15 +115,12 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
             for batch in val_loader:
                 optimizer.zero_grad()
 
-                mels = batch["mel"].to(device)
-                texts = batch["transcript"]
-                embeds = batch["speaker_embeddings"].to(device)
+                mels = batch["mels"].to(device)
+                texts = batch["transcripts"]
+                embeds = batch["embeddings"].to(device)
                 
-                text_sequences = [torch.tensor(text_to_sequence(text, ["english_cleaners"]), dtype=torch.long) for text in texts]
-                text_sequences = pad_sequence(text_sequences, batch_first=True).to(device) 
-
                 # Forward pass
-                mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=text_sequences, m=mels, speaker_embedding=embeds)
+                mel_outputs, mel_outputs_postnet, alignments, stop_outputs = synthesizer(x=texts, m=mels, speaker_embedding=embeds)
 
                 min_len = min(mel_outputs.size(2), mels.size(2))
                 mel_outputs = mel_outputs[:, :, :min_len]
@@ -186,15 +152,15 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
     print(f"Fine-tuned model saved to {SAVE_PATH}")
     
 def run():
-    training_metadata = pd.read_csv(TRAIN_METADATA_PATH)
+     # Define character vocabulary
+    vocab = {char: idx for idx, char in enumerate("abcdefghijklmnopqrstuvwxyz'.,?! ")}
+    vocab['<pad>'] = len(vocab)
         
-    traininig_dataset = EpisodicDataset(training_metadata)
-    training_loader = DataLoader(traininig_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=load_batch)
+    traininig_dataset = TTSDataLoader(TRAIN_METADATA_PATH, vocab)
+    training_loader = DataLoader(traininig_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, collate_fn=collate_fn)
 
-    val_metadata = pd.read_csv(VAL_METADATA_PATH)
-        
-    val_dataset = EpisodicDataset(val_metadata)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=load_batch)
+    val_dataset = TTSDataLoader(VAL_METADATA_PATH, vocab)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, collate_fn=collate_fn)
 
     params = {
         "embed_dims": 512,
@@ -214,7 +180,9 @@ def run():
     }
 
     synthesizer = Tacotron(**params)
+    synthesizer.reset_step()
     synthesizer.load(PRETRAINED_SYNTHESIZER_PATH)
+
     print("Model initialized")
     
     fine_tune(synthesizer, training_loader, val_loader)

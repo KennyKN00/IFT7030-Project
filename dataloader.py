@@ -39,8 +39,8 @@ class TTSDataLoader(Dataset):
         text_sequence = torch.tensor(text_sequence)
         
         # Load mel spectrogram and embeddings
-        mel = torch.tensor(torch.load(mel_path))  # Assumes .pt files are PyTorch tensors
-        embedding = torch.tensor(torch.load(embeddings_path))  # Assumes .pt files are PyTorch tensors
+        mel = torch.tensor(torch.load(mel_path, weights_only=False))  # Assumes .pt files are PyTorch tensors
+        embedding = torch.tensor(torch.load(embeddings_path, weights_only=False))  # Assumes .pt files are PyTorch tensors
 
         # Generate stop token target (1 at the last frame, 0 elsewhere)
         stop_target = torch.zeros(mel.size(1))

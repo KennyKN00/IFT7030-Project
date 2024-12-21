@@ -150,15 +150,6 @@ def train(run_id: str, syn_dir: Path, models_dir: Path, save_every: int, backup_
         epochs = np.ceil(training_steps / steps_per_epoch).astype(np.int32)
 
         for epoch in range(1, epochs + 1):
-            # Dynamically unfreeze layers based on schedule
-            for layer, epoch_to_unfreeze in unfreeze_schedule.items():
-                if epoch >= epoch_to_unfreeze:
-                    for name, param in model.named_parameters():
-                        if layer in name and not param.requires_grad:
-                            param.requires_grad = True
-                            print(f"Unfroze layer {name} at epoch {epoch}")
-
-
             for i, (texts, mels, embeds, idx) in enumerate(data_loader, 1):
                 start_time = time.time()
 
