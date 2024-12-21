@@ -165,3 +165,4 @@ VCTK_data/
 pretrained_models/
 !models/archive
 models/
+images/
