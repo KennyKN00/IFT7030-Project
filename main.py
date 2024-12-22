@@ -36,7 +36,7 @@ def clone_voice(audio_path, trained_path):
     # Input text
     text = ""
     
-    text_path = "data/output_text.txt"
+    text_path = "data/output_text2.txt"
     with open(text_path, "r", encoding="utf-8") as file:
         text = file.read()
 
@@ -59,9 +59,9 @@ def main():
     
     # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
     
-    audio_path = "audio_records/reference.wav"
+    audio_path = "audio_records/reference2.wav"
     pretrained_model_path = Path("models/synthesizer.pt")
-    fine_tuned_model_path = Path("models/checkpoint_epoch_2250.pt")
+    # fine_tuned_model_path = Path("models/checkpoint_epoch_2250.pt")
 
     # Inital mel
     # compute_initial_mel(audio_path, pretrained_model_path)
@@ -73,7 +73,7 @@ def main():
     plot_mel_spectrogram(mel.squeeze(0), path="images/before_fine_tuning_mel.png")
 
     # Get mel after fine-tuning
-    mel = clone_voice(audio_path, fine_tuned_model_path)
+    # mel = clone_voice(audio_path, fine_tuned_model_path)
     # print("Mel after:", mel.shape)
     # vocoder.writeMEL(mel, "Mels/TestAfterfinetuning.npy")
     plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
@@ -81,7 +81,7 @@ def main():
     # print(mel_loaded.shape)
 
     # Generate a wav file from MEL
-    wav_path = "outputs/example5.wav"
+    wav_path = "outputs/example_ref_2_text_2.wav"
     vocoder.generateWAV(mel, wav_path)
     print("Done!")
     # Listen to the wav file

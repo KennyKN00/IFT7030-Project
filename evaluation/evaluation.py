@@ -1,6 +1,6 @@
 import librosa
-import evaluation.mcd as mcd
-import evaluation.wer as wer
+import mcd as mcd
+import wer as wer
 
 REF_AUDIO_PATH = "audio_records/reference.wav"
 SYNTH_AUDIO_PATH = "audio_records/synthesized.wav"
@@ -17,4 +17,8 @@ def main():
     # Compute WER
     wer_score = wer.compute_wer(REF_TEXT_PATH, SYNTH_AUDIO_PATH)
 
+    print(mcd_score, wer_score)
+
     return mcd_score, wer_score
+
+main()
