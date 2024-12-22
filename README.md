@@ -47,7 +47,7 @@ Key features:
 - Speaker Encoder : [The encoder.pt file is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
 - HiFi-GAN vocoder : [The vocoder.pt file is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
 - Fine-tuned checkpoint for first method : [The checkpoint_epoch_2050.pt is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
-- Fine-tuned checkpoint for second method : [The syntehsize_000030.pt is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
+- Fine-tuned checkpoint for second method : [The synthesizer_000030.pt is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
 
 ## Data preparation
 
