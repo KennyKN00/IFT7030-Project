@@ -74,7 +74,7 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
         num_batches = 0
 
         # Training Loop
-        synthesizer.train()  # Set model to training mode
+        synthesizer.train()  
         for batch in train_loader:
             optimizer.zero_grad()
 
@@ -108,10 +108,10 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
         print(f"Epoch {epoch}, Training Loss: {train_loss:.4f}")
 
         # Validation Loop
-        synthesizer.eval()  # Set model to evaluation mode
+        synthesizer.eval()  
         val_loss = 0
         num_val_batches = 0
-        with torch.no_grad():  # No gradient calculation for validation
+        with torch.no_grad():  
             for batch in val_loader:
                 optimizer.zero_grad()
 
@@ -152,7 +152,7 @@ def fine_tune(synthesizer, train_loader, val_loader, epochs=EPOCHS, lr=LEARNING_
     print(f"Fine-tuned model saved to {SAVE_PATH}")
     
 def run():
-     # Define character vocabulary
+    # Define character vocabulary
     vocab = {char: idx for idx, char in enumerate("abcdefghijklmnopqrstuvwxyz'.,?! ")}
     vocab['<pad>'] = len(vocab)
         

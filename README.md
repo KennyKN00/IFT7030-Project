@@ -8,8 +8,6 @@ This repository contains the code and methodology for fine-tuning pretrained mod
 3. [Data Preparation](#data-preparation)
 4. [Training](#training)
 5. [Inference and Evaluation](#inference-and-evaluation)
-6. [Results](#results)
-7. [Acknowledgments](#acknowledgments)
 
 
 ## Project Overview
@@ -48,6 +46,8 @@ Key features:
 3. Download the pretrained models and place them into the `models/` directory :
 - Speaker Encoder : [The encoder.pt file is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
 - HiFi-GAN vocoder : [The vocoder.pt file is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
+- Fine-tuned checkpoint for first method : [The checkpoint_epoch_2050.pt is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
+- Fine-tuned checkpoint for second method : [The syntehsize_000030.pt is here](https://drive.google.com/drive/folders/1HnPKj61FoDJwMLTHCgRnfccz3OyhQikg?usp=sharing)
 
 ## Data preparation
 
@@ -80,37 +80,16 @@ dataset/
 
 ## Training 
 
-To train the model, run the training script with the following command :
-``` bash
-python train.py --data-dir ./preprocessed_data \
-                --output-dir ./checkpoints \
-                --batch-size 32 \
-                --epochs 50 \
-                --learning-rate 1e-4 \
-                --freeze-encoder True \
-                --dynamic-freezing True
-```
-- Flags :
-    - --freeze-encoder: Freezes the encoder layers.
-    - --dynamic-freezing: Gradually unfreezes layers during training.
+To train the model, un-comment the `Fine-tuning 1` part for the first implementation of fine-tuning. Else, un-comment `Fine-tuning 2` part for the second implementation of a fine-tuning.
 
 - Checkpoints will be saved in the `models/` directory.
 
 ## Inference and Evaluation
 
 ### Generate Audio
-Use the `inference.py` script to synthesize audio :
-``` bash
-python inference.py --input-text "Hello, this is a zero-shot voice cloning test." \
-                    --speaker-embedding ./preprocessed_data/speaker1/embedding.pt \
-                    --output-audio ./output_audio.wav
+To generate the audio, un-comment the `Get mel before fine-tuning` and you will get a mel-spectrogram and the syntehsized audio.
 
-```
+Similarly, un-comment the `Get mel after fine-tuning` to output the synthesized audio and mel-spectrogram.
 
 ### Evaluate Performance
-Run the evaluation script to calculate WER and MCD.
-``` bash
-python evaluate.py --generated-audio ./output_audio.wav \
-                   --ground-truth-audio ./datasets/speaker1/audio1.wav
-
-```
+Once a synthesized audio is output, run the script in `evaluation/evaluation.py` to get both MCD and WER score. You can proceed with this step after geneerating audio before and after fine-tuning.

@@ -14,8 +14,8 @@ def transform_to_text(audio_path):
     signal, sample_rate = torchaudio.load(audio_file)
 
     # Resample if necessary
-    if sample_rate != 16000:
-        signal = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(signal)
+    if sample_rate != 22050:
+        signal = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=22050)(signal)
 
     # Perform transcription
     transcription = asr_model.transcribe_file(audio_file)
