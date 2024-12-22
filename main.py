@@ -54,36 +54,49 @@ def compute_initial_mel(audio_path, trained_model_path):
     
 
 def main():
+    # path = "data/train/mel_spectrograms/p225/p225_151_mic1_mel.pt"
+    # mel = torch.load(path)
+    # print(mel.shape)
+    # plot_mel_spectrogram(mel, path="images/trainlookmel.png")
     # recorder = Recorder()
     # recorder.run()
-    
     # preprocessing.prepare_data(encoder, "audio_records/audio_val/metadata.csv")
+
+    a = torch.load("models/synthesizer.pt")
+    a = a["model_state"]
+
+    # print(a.keys())
+
+    b = torch.load("models/old_chkp/checkpoint_epoch_2250.pt")
+    b = b["model_state"]
+
+
+    # for clé, valeur1, valeur2 in zip(a.keys(), a.values(), b.values()):
+        # print(f"Clé: {clé}, Valeur1: {valeur1.shape}, Valeur2: {valeur2.shape}")
     
     audio_path = "audio_records/reference.wav"
-    pretrained_model_path = Path("models/synthesizer.pt")
-    fine_tuned_model_path = Path("models/checkpoint_epoch_2250.pt")
+    # pretrained_model_path = Path("models/synthesizer.pt")
+    # fine_tuned_model_path = Path("models/checkpoint_epoch_2250.pt")
+    fine_tuned_model_path = Path("models/synthesizer.pt")
+    # fine_tuned_model_path = Path("models/old_chkp/checkpoint_epoch_2250.pt")
 
-    # Inital mel
-    # compute_initial_mel(audio_path, pretrained_model_path)
     
     # Get mel before fine-tuning
-    mel = clone_voice(audio_path, pretrained_model_path)
-    # print("Mel b4 finetuning:", mel.shape)
-    # print(mel)
-    plot_mel_spectrogram(mel.squeeze(0), path="images/before_fine_tuning_mel.png")
+    mel = clone_voice(audio_path, fine_tuned_model_path)
+    plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_francis.png")
 
     # Get mel after fine-tuning
-    mel = clone_voice(audio_path, fine_tuned_model_path)
+    # mel = clone_voice(audio_path, fine_tuned_model_path)
     # print("Mel after:", mel.shape)
     # vocoder.writeMEL(mel, "Mels/TestAfterfinetuning.npy")
-    plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
+    # plot_mel_spectrogram(mel.squeeze(0), path="images/after_fine_tuning_mel.png")
     # mel_loaded = vocoder.readMEL("Mels/TestAfterfinetuning.npy")
     # print(mel_loaded.shape)
 
     # Generate a wav file from MEL
-    wav_path = "outputs/example5.wav"
-    vocoder.generateWAV(mel, wav_path)
-    print("Done!")
+    wav_path = "outputs/result_ref1_after_fine_tuning.wav"
+    vocoder.generateWAV(mel, wav_path, P=False)
+    # print("Done!")
     # Listen to the wav file
     vocoder.playWav(wav_path)
 
@@ -91,9 +104,9 @@ def main():
     # print(torch.load("models/checkpoint_epoch_10.pt"))
 
     train.train(run_id="",
-      syn_dir="data/train/metadata.csv",
+      syn_dir="data2/train/metadata.csv",
       models_dir=Path("models"),
-      save_every=1000,
+      save_every=333,
       backup_every=5000,
       force_restart=False,
       hparams=hparams,
