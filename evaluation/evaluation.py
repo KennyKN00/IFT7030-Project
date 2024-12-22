@@ -2,9 +2,9 @@ import librosa
 import mcd as mcd
 import wer as wer
 
-REF_AUDIO_PATH = "audio_records/reference.wav"
-SYNTH_AUDIO_PATH = "audio_records/synthesized.wav"
-REF_TEXT_PATH = "data/output_text.txt"
+REF_AUDIO_PATH = "evaluation_example/reference2.wav"
+SYNTH_AUDIO_PATH = "evaluation_example/example_ref_2_text_2.wav"
+REF_TEXT_PATH = "evaluation_example/output_text2.txt"
 
 def main():
     # Load audio
@@ -21,4 +21,4 @@ def main():
 
     return mcd_score, wer_score
 
-main()
+main() # Example of evaluation
